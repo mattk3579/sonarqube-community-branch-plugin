@@ -55,6 +55,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.lang.String;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
@@ -71,6 +72,10 @@ public class BitbucketPullRequestDecorator implements PullRequestBuildStatusDeco
     public BitbucketPullRequestDecorator(BitbucketClientFactory bitbucketClientFactory, ReportGenerator reportGenerator) {
         this.bitbucketClientFactory = bitbucketClientFactory;
         this.reportGenerator = reportGenerator;
+    }
+
+    private String getAnalysisProjectKey() {
+        return this.getAnalysisProjectKey().substring(0, 50);
     }
 
     @Override

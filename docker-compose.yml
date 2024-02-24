@@ -24,7 +24,7 @@ services:
       - sonarqube_conf:/opt/sonarqube/conf
       - sonarqube_data:/opt/sonarqube/data
   db:
-    image: postgres:11
+    image: postgres:15
     container_name: postgres
     networks:
       - sonarnet

@@ -44,6 +44,7 @@ class BitbucketPullRequestDecoratorTest {
 
     private static final String COMMIT = "commit";
     private static final String REPORT_KEY = "report-key";
+    private static final String REPORT_KEY_OVER_50 = "report-key-that-is-kinda-longer-than-fifty-characters";
 
     private static final String ISSUE_KEY = "issue-key";
     private static final int ISSUE_LINE = 1;
@@ -84,6 +85,35 @@ class BitbucketPullRequestDecoratorTest {
         verify(client).createLinkDataValue(DASHBOARD_URL);
         verify(client).createCodeInsightsReport(reportDataArgumentCaptor.capture(), eq("Quality Gate passed" + System.lineSeparator()), any(), eq(DASHBOARD_URL), eq(String.format("%s/common/icon.png", IMAGE_URL)), eq(ReportStatus.PASSED));
         verify(client).deleteAnnotations(COMMIT, REPORT_KEY);
+
+        assertThat(reportDataArgumentCaptor.getValue())
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ReportData("Reliability", new DataValue.Text("0 Bugs")),
+                        new ReportData("Code coverage", new DataValue.Percentage(BigDecimal.ONE)),
+                        new ReportData("Security", new DataValue.Text("0 Vulnerabilities (and 0 Hotspots)")),
+                        new ReportData("Duplication", new DataValue.Percentage(BigDecimal.TEN)),
+                        new ReportData("Maintainability", new DataValue.Text("0 Code Smells")),
+                        new ReportData("Analysis details", null)));
+    }
+
+    @Test
+    void testReportKeyLongerThan50ValidAnalysis() throws IOException {
+        when(client.supportsCodeInsights()).thenReturn(true);
+        AnnotationUploadLimit uploadLimit = new AnnotationUploadLimit(1000, 1000);
+        when(client.getAnnotationUploadLimit()).thenReturn(uploadLimit);
+
+        mockValidAnalysis();
+        when(analysisSummary.getNewDuplications()).thenReturn(BigDecimal.TEN);
+        when(analysisSummary.getNewCoverage()).thenReturn(BigDecimal.ONE);
+        when(analysisDetails.getAnalysisProjectKey()).thenReturn(REPORT_KEY_OVER_50);
+        underTest.decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto);
+
+        ArgumentCaptor<List<ReportData>> reportDataArgumentCaptor = ArgumentCaptor.forClass(List.class);
+        verify(client).createCodeInsightsAnnotation(ISSUE_KEY, ISSUE_LINE, ISSUE_LINK, ISSUE_MESSAGE, ISSUE_PATH, "HIGH", "BUG");
+        verify(client).createLinkDataValue(DASHBOARD_URL);
+        verify(client).createCodeInsightsReport(reportDataArgumentCaptor.capture(), eq("Quality Gate passed" + System.lineSeparator()), any(), eq(DASHBOARD_URL), eq(String.format("%s/common/icon.png", IMAGE_URL)), eq(ReportStatus.PASSED));
+        verify(client).uploadReport(eq(COMMIT), any(), eq(REPORT_KEY_OVER_50));
+        verify(client).deleteAnnotations(COMMIT, REPORT_KEY_OVER_50);
 
         assertThat(reportDataArgumentCaptor.getValue())
                 .usingRecursiveComparison()
